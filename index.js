@@ -332,12 +332,6 @@ function handleMessage(client, msg) {
       if (Number.isFinite(requestedCooldown)) {
         room.hyperCooldown = Math.max(0, Math.min(50, Math.trunc(requestedCooldown)));
       }
-      if (msg.notebookTarget !== undefined) {
-        const requestedBooks = Number(msg.notebookTarget);
-        if (Number.isFinite(requestedBooks)) {
-          room.notebookTarget = Math.max(0, Math.min(7, Math.trunc(requestedBooks)));
-        }
-      }
       broadcastRoom(room);
       return;
     }
