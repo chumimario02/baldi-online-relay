@@ -1,4 +1,4 @@
-/*
+/* Baldi Online relay - updated */
  * Baldi Online - relay WebSocket
  * Rooms, roles and timer live here; clients only send positions and events.
  */
