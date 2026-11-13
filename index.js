@@ -215,7 +215,7 @@ function handleLeave(client) {
   }
 
   if (room.state === "playing") {
-    if (room.players.size < 2) {
+      if (room.players.size < 1)
       endGame(room, "abandonada", "Un jugador salió");
       return;
     }
@@ -311,7 +311,7 @@ function handleMessage(client, msg) {
     case "start": {
       if (!room || room.state !== "lobby") return;
       if (room.hostId !== client.id) return;
-      if (room.players.size < 2)
+      if (room.players.size < 1)
         return send(client.ws, { t: "error", msg: "Faltan jugadores" });
       startGame(room);
       return;
