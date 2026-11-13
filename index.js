@@ -1,4 +1,4 @@
-/* Baldi Online relay - updated */
+/*
  * Baldi Online - relay WebSocket
  * Rooms, roles and timer live here; clients only send positions and events.
  */
@@ -215,7 +215,7 @@ function handleLeave(client) {
   }
 
   if (room.state === "playing") {
-      if (room.players.size < 1)
+  if (room.players.size < 1) {
       endGame(room, "abandonada", "Un jugador salió");
       return;
     }
