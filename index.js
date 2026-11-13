@@ -40,6 +40,8 @@ function roomInfo(room, viewerId) {
     mode: room.mode,
     max: room.max,
     notebookTarget: room.notebookTarget,
+    hyperStamina: room.hyperStamina,
+    hyperCooldown: room.hyperCooldown,
     state: room.state,
     hostId: room.hostId,
     you: viewerId,
@@ -114,6 +116,8 @@ function startGame(room) {
     mode: room.mode,
     duration: room.duration,
     notebookTarget: room.notebookTarget,
+    hyperStamina: room.hyperStamina,
+    hyperCooldown: room.hyperCooldown,
     now: Date.now(),
     aiOwner: room.aiOwner || null,
     players: players.map((p, index) => ({
@@ -238,13 +242,23 @@ function handleMessage(client, msg) {
       handleLeave(client);
       const mode = MODES.has(msg.mode) ? msg.mode : "coop";
       const max = Math.max(2, Math.min(8, Number(msg.max) || 8));
-      const notebookTarget = Math.max(0, Math.min(7, Number(msg.notebookTarget) || 7));
+      const requestedBooks = Number(msg.notebookTarget);
+      const notebookTarget = Number.isFinite(requestedBooks)
+        ? Math.max(0, Math.min(7, Math.trunc(requestedBooks)))
+        : 7;
+      const hyperStamina = msg.hyperStamina === true;
+      const requestedCooldown = Number(msg.hyperCooldown);
+      const hyperCooldown = Number.isFinite(requestedCooldown)
+        ? Math.max(0, Math.min(50, Math.trunc(requestedCooldown)))
+        : 0;
       const code = makeCode();
       const newRoom = {
         code,
         mode,
         max,
         notebookTarget,
+        hyperStamina,
+        hyperCooldown,
         state: "lobby",
         hostId: client.id,
         players: new Map(),
@@ -306,6 +320,25 @@ function handleMessage(client, msg) {
         player.role = msg.role;
         broadcastRoom(room);
       }
+      return;
+    }
+    case "settings": {
+      if (!room || room.state !== "lobby") return;
+      if (room.hostId !== client.id) return;
+      if (typeof msg.hyperStamina === "boolean") {
+        room.hyperStamina = msg.hyperStamina;
+      }
+      const requestedCooldown = Number(msg.hyperCooldown);
+      if (Number.isFinite(requestedCooldown)) {
+        room.hyperCooldown = Math.max(0, Math.min(50, Math.trunc(requestedCooldown)));
+      }
+      if (msg.notebookTarget !== undefined) {
+        const requestedBooks = Number(msg.notebookTarget);
+        if (Number.isFinite(requestedBooks)) {
+          room.notebookTarget = Math.max(0, Math.min(7, Math.trunc(requestedBooks)));
+        }
+      }
+      broadcastRoom(room);
       return;
     }
     case "start": {
