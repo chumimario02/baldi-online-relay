@@ -7,7 +7,7 @@ const { WebSocketServer, WebSocket } = require("ws");
 
 const PORT = process.env.PORT || 3000;
 const TICK_MS = 100;
-const MODES = new Set(["coop", "free", "chaos"]);
+const MODES = new Set(["coop", "free", "chaos", "hypersoda"]);
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 let nextPlayerId = 0;
@@ -66,7 +66,7 @@ function assignRoles(room) {
     p.alive = true;
   });
 
-  if (room.mode === "coop") {
+  if (room.mode === "coop" || room.mode === "hypersoda") {
     players.forEach((p) => {
       p.role = "survivor";
     });
@@ -157,7 +157,7 @@ function survivorsAlive(room) {
 function checkEnd(room) {
   if (room.state !== "playing") return;
   const alive = survivorsAlive(room);
-  if (room.mode === "coop") {
+  if (room.mode === "coop" || room.mode === "hypersoda") {
     if ([...room.players.values()].some((p) => !p.alive)) {
       endGame(room, "baldi", "Un jugador fue atrapado");
     }
@@ -210,7 +210,7 @@ function handleLeave(client) {
 
   if (room.hostId === client.id) {
     room.hostId = [...room.players.keys()][0];
-    if (room.mode === "coop") room.aiOwner = room.hostId;
+    if (room.mode === "coop" || room.mode === "hypersoda") room.aiOwner = room.hostId;
     broadcast(room, { t: "host", id: room.hostId });
   }
 
@@ -327,7 +327,7 @@ function handleMessage(client, msg) {
       return;
     }
     case "aipos": {
-      if (!room || room.state !== "playing" || room.mode !== "coop") return;
+      if (!room || room.state !== "playing" || room.mode !== "coop" && room.mode !== "hypersoda") return;
       if (client.id !== room.hostId) return;
       room.ai = {
         x: Number(msg.x) || 0,
@@ -360,7 +360,7 @@ function handleMessage(client, msg) {
       return;
     }
     case "slap": {
-      if (!room || room.state !== "playing" || room.mode !== "coop") return;
+      if (!room || room.state !== "playing" || room.mode !== "coop" && room.mode !== "hypersoda") return;
       broadcast(room, { t: "event", kind: "slap" });
       return;
     }
@@ -369,7 +369,7 @@ function handleMessage(client, msg) {
       const attacker = room.players.get(client.id);
       const target = room.players.get(String(msg.target || ""));
       if (!attacker || !target || !target.alive) return;
-      const isAi = Boolean(msg.ai) && room.mode === "coop" && client.id === room.hostId;
+      const isAi = Boolean(msg.ai) && (room.mode === "coop" || room.mode === "hypersoda") && client.id === room.hostId;
       if (!isAi && attacker.role !== "baldi") return;
       if (target.role !== "survivor") return;
       if (isAi && room.ai && distance2d(room.ai, target) > 5.5) return;
