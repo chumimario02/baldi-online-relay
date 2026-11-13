@@ -7,7 +7,7 @@ const { WebSocketServer, WebSocket } = require("ws");
 
 const PORT = process.env.PORT || 3000;
 const TICK_MS = 100;
-const MODES = new Set(["coop"]);
+const MODES = new Set(["coop", "free", "chaos"]);
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 let nextPlayerId = 0;
@@ -39,6 +39,7 @@ function roomInfo(room, viewerId) {
     code: room.code,
     mode: room.mode,
     max: room.max,
+    notebookTarget: room.notebookTarget,
     state: room.state,
     hostId: room.hostId,
     you: viewerId,
@@ -62,10 +63,39 @@ function assignRoles(room) {
   const players = [...room.players.values()];
   players.forEach((p) => {
     p.notebooks = 0;
-    p.role = "survivor";
     p.alive = true;
   });
-  room.aiOwner = room.hostId;
+
+  if (room.mode === "coop") {
+    players.forEach((p) => {
+      p.role = "survivor";
+    });
+    room.aiOwner = room.hostId;
+  } else if (room.mode === "free") {
+    // Los jugadores eligen rol en el lobby; nos aseguramos de que
+    // al menos haya un Baldi y un superviviente.
+    const hasBaldi = players.some((p) => p.role === "baldi");
+    if (!hasBaldi && players.length > 0) {
+      players[0].role = "baldi";
+    }
+    const hasSurvivor = players.some((p) => p.role === "survivor");
+    if (!hasSurvivor && players.length > 1) {
+      players[1].role = "survivor";
+    }
+    room.aiOwner = room.hostId;
+  } else if (room.mode === "chaos") {
+    // Un superviviente al azar, el resto son Baldi.
+    const survivorIndex = Math.floor(Math.random() * players.length);
+    players.forEach((p, i) => {
+      p.role = i === survivorIndex ? "survivor" : "baldi";
+    });
+    room.aiOwner = room.hostId;
+  } else {
+    players.forEach((p) => {
+      p.role = "survivor";
+    });
+    room.aiOwner = room.hostId;
+  }
 }
 
 function startGame(room) {
@@ -83,7 +113,7 @@ function startGame(room) {
     t: "start",
     mode: room.mode,
     duration: room.duration,
-    startedAt: room.startedAt,
+    notebookTarget: room.notebookTarget,
     now: Date.now(),
     aiOwner: room.aiOwner || null,
     players: players.map((p, index) => ({
@@ -208,11 +238,13 @@ function handleMessage(client, msg) {
       handleLeave(client);
       const mode = MODES.has(msg.mode) ? msg.mode : "coop";
       const max = Math.max(2, Math.min(8, Number(msg.max) || 8));
+      const notebookTarget = Math.max(0, Math.min(7, Number(msg.notebookTarget) || 7));
       const code = makeCode();
       const newRoom = {
         code,
         mode,
         max,
+        notebookTarget,
         state: "lobby",
         hostId: client.id,
         players: new Map(),
@@ -373,12 +405,13 @@ function handleMessage(client, msg) {
       if (!room || room.state !== "playing") return;
       const player = room.players.get(client.id);
       if (!player || player.role !== "survivor" || !player.alive) return;
-      if ((room.notebooks || 0) < 7) return;
+      const target = (room.notebookTarget != null) ? room.notebookTarget : 7;
+      if (target > 0 && (room.notebooks || 0) < target) return;
       broadcast(room, { t: "event", kind: "escape", by: player.id });
       endGame(
         room,
         room.mode === "chaos" ? "survivor" : "survivors",
-        player.name + " escapó con los 7 cuadernos"
+        player.name + " escapo con " + (target > 0 ? target + " cuadernos" : "infinitos cuadernos")
       );
       return;
     }
