@@ -42,6 +42,7 @@ function roomInfo(room, viewerId) {
     notebookTarget: room.notebookTarget,
     hyperStamina: room.hyperStamina,
     hyperCooldown: room.hyperCooldown,
+    spooked: Boolean(room.spooked),
     state: room.state,
     hostId: room.hostId,
     you: viewerId,
@@ -384,6 +385,7 @@ function handleMessage(client, msg) {
       if (room.spooked) return;
       room.spooked = true;
       broadcast(room, { t: "event", kind: "spook" });
+      broadcastRoom(room);
       return;
     }
     case "slap": {
