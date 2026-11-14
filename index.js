@@ -388,7 +388,7 @@ function handleMessage(client, msg) {
     }
     case "slap": {
       if (!room || room.state !== "playing" || room.mode !== "coop" && room.mode !== "hypersoda") return;
-      broadcast(room, { t: "event", kind: "slap" });
+      broadcast(room, { t: "event", kind: "slap", by: client.id });
       return;
     }
     case "kill": {
