@@ -365,6 +365,42 @@ function handleMessage(client, msg) {
       };
       return;
     }
+    case "noise": {
+      if (!room || room.state !== "playing") return;
+      const p = room.players.get(client.id);
+      if (!p || !p.alive) return;
+      const now = Date.now();
+      if (client.lastNoise && now - client.lastNoise < 60) return;
+      client.lastNoise = now;
+      broadcast(room, {
+        t: "event",
+        kind: "noise",
+        by: client.id,
+        x: Number(msg.x) || 0,
+        y: Number(msg.y) || 0,
+        z: Number(msg.z) || 0,
+        priority: Math.max(0, Math.min(8, Number(msg.priority) || 1)),
+      });
+      return;
+    }
+    case "angry": {
+      if (!room || room.state !== "playing") return;
+      const p = room.players.get(client.id);
+      if (!p || !p.alive) return;
+      const value = Number(msg.anger) || 0;
+      if (value === 0) return;
+      const now = Date.now();
+      if (client.lastAngry && now - client.lastAngry < 150) return;
+      client.lastAngry = now;
+      broadcast(room, {
+        t: "event",
+        kind: "angry",
+        by: client.id,
+        anger: Math.max(-1, Math.min(1, value)),
+        temp: Boolean(msg.temp),
+      });
+      return;
+    }
     case "aggro": {
       if (!room || room.state !== "playing") return;
       const p = room.players.get(client.id);
@@ -421,8 +457,11 @@ function handleMessage(client, msg) {
       const isAi = Boolean(msg.ai) && (room.mode === "coop" || room.mode === "hypersoda") && client.id === room.hostId;
       if (!isAi && attacker.role !== "baldi") return;
       if (target.role !== "survivor") return;
-      if (isAi && room.ai && distance2d(room.ai, target) > 5.5) return;
-      if (!isAi && distance2d(attacker, target) > 5.5) return;
+      if (isAi) {
+        // El host manda su posicion actual; room.ai puede ir 100 ms atrasado.
+        const aiPos = msg.hasPos ? { x: Number(msg.x) || 0, z: Number(msg.z) || 0 } : room.ai;
+        if (aiPos && distance2d(aiPos, target) > 4.5) return;
+      } else if (distance2d(attacker, target) > 5.5) return;
       target.alive = false;
       broadcast(room, {
         t: "event",
