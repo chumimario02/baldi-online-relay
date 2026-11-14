@@ -391,6 +391,26 @@ function handleMessage(client, msg) {
       broadcast(room, { t: "event", kind: "slap", by: client.id });
       return;
     }
+    case "spray": {
+      if (!room || room.state !== "playing") return;
+      const thrower = room.players.get(client.id);
+      if (!thrower || !thrower.alive) return;
+      const sprayNow = Date.now();
+      if (client.lastSprayAt && sprayNow - client.lastSprayAt < 200) return;
+      client.lastSprayAt = sprayNow;
+      broadcast(room, {
+        t: "event",
+        kind: "spray",
+        by: client.id,
+        x: Number(msg.x) || 0,
+        y: Number(msg.y) || 0,
+        z: Number(msg.z) || 0,
+        rx: Number(msg.rx) || 0,
+        ry: Number(msg.ry) || 0,
+        rz: Number(msg.rz) || 0,
+      });
+      return;
+    }
     case "kill": {
       if (!room || room.state !== "playing") return;
       const attacker = room.players.get(client.id);
